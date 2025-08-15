@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>インタラクティブ報告書：巣箱の知られざる危険性</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutral (Stone, Amber, Slate) -->
+    <!-- Application Structure Plan: A thematic, single-page journey. Starts with the core problem, allows interactive exploration of the "heat trap" physics via a custom dashboard, explains the biological impact, provides an interactive toolkit of solutions, and concludes with an ethical call to action. This structure is chosen to be more persuasive and engaging than a linear report, guiding the user from awareness to empowerment. -->
+    <!-- Visualization & Content Choices: Main visualization is a custom interactive HTML/JS dashboard simulating the nest box temperature based on user-controlled sliders (ambient temp, camera power) and toggles (solar gain). This directly models the report's Table 2 data for maximum impact. Goal: Compare/Explore. Method: Custom JS. Justification: More engaging than a static chart. Other content (solutions, ethics) is presented in clickable cards/sections. Goal: Inform/Organize. Method: HTML/CSS/JS. Justification: Prevents information overload. CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #f5f5f4; /* stone-100 */
+            color: #333;
+        }
+        .temp-display {
+            transition: all 0.3s ease-in-out;
+        }
+        .temp-safe { background-color: #22c55e; color: white; } /* green-500 */
+        .temp-caution { background-color: #f59e0b; color: white; } /* amber-500 */
+        .temp-danger { background-color: #ef4444; color: white; } /* red-500 */
+        .temp-lethal { background-color: #8b5cf6; color: white; } /* violet-500 */
+        .solution-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .solution-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .solution-detail {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out;
+        }
+        .solution-detail.open {
+            max-height: 1000px;
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="bg-stone-200 text-stone-800 p-4 shadow-md sticky top-0 z-10">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl md:text-2xl font-bold">巣箱の熱リスクに関する科学的分析</h1>
+            <nav>
+                <a href="#interactive-sim" class="mx-2 hover:text-amber-600">シミュレーション</a>
+                <a href="#impact" class="mx-2 hover:text-amber-600">生物への影響</a>
+                <a href="#solutions" class="mx-2 hover:text-amber-600">解決策</a>
+                <a href="#ethics" class="mx-2 hover:text-amber-600">倫理</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-4 md:p-8">
+
+        <section class="text-center mb-16">
+            <h2 class="text-3xl md:text-5xl font-bold text-red-600 mb-4">善意が悲劇に変わる時</h2>
+            <p class="text-lg md:text-xl text-stone-700 max-w-3xl mx-auto">
+                野生動物を想い設置された巣箱。しかし、夏の暑さと内部に設置されたカメラが組み合わさる時、その安全なはずの避難所は、新生児にとって致命的な「熱の罠」へと変貌します。このインタラクティブ報告書は、その科学的根拠と、命を救うための具体的な解決策を探ります。
+            </p>
+        </section>
+
+        <section id="interactive-sim" class="mb-16 bg-white p-6 rounded-lg shadow-lg">
+            <h3 class="text-2xl md:text-3xl font-bold text-center mb-6">インタラクティブ・シミュレーション：巣箱はなぜ危険な暑さになるのか？</h3>
+            <p class="text-center text-stone-600 mb-8">下のスライダーとボタンを操作して、様々な要因が巣箱の内部温度にどう影響するかを確かめてください。</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                <div class="flex flex-col items-center justify-center p-4 border-2 border-stone-200 rounded-lg relative">
+                    <div id="sun-icon" class="absolute top-2 right-2 text-4xl opacity-0 transition-opacity duration-500">☀️</div>
+                    <img src="https://placehold.co/300x300/8c5a2b/ffffff?text=🐿️" alt="巣箱" class="rounded-lg mb-4 w-48 h-48 md:w-64 md:h-64 object-cover">
+                    <div class="w-full text-center">
+                        <p class="text-lg font-bold mb-2">巣箱内の予測温度</p>
+                        <div id="internal-temp-display" class="temp-display p-4 rounded-lg text-4xl font-bold temp-safe">--.- °C / --.- °F</div>
+                        <p id="temp-warning" class="mt-2 text-red-600 font-bold h-6"></p>
+                    </div>
+                </div>
+
+                <div class="space-y-8">
+                    <div>
+                        <label for="ambient-temp" class="block font-bold text-lg mb-2">1. 外気温 (Ambient Temperature)</label>
+                        <input type="range" id="ambient-temp" min="20" max="40" value="29" class="w-full">
+                        <div class="text-center text-xl font-semibold"><span id="ambient-temp-value">29</span>°C / <span id="ambient-temp-value-f">84.2</span>°F</div>
+                    </div>
+                    
+                    <div>
+                        <p class="block font-bold text-lg mb-2">2. 日射による影響 (Solar Gain)</p>
+                        <button id="solar-gain-toggle" class="w-full p-3 bg-stone-200 hover:bg-amber-400 hover:text-white rounded-lg font-bold transition-colors">太陽光を追加 (+5°C / +9°F)</button>
+                    </div>
+
+                    <div>
+                        <label for="camera-power" class="block font-bold text-lg mb-2">3. カメラによる発熱 (Camera Heat)</label>
+                        <input type="range" id="camera-power" min="0" max="3" value="0" class="w-full">
+                        <div class="text-center text-xl font-semibold"><span id="camera-power-label">カメラなし</span> (<span id="camera-wattage-value">0</span>W)</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="impact" class="mb-16">
+            <h3 class="text-2xl md:text-3xl font-bold text-center mb-6">生物への影響：なぜ新生児は特に危険なのか</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h4 class="text-xl font-bold mb-3">生理学的な脆弱性</h4>
+                    <p class="text-stone-700">ハイイロリスの新生児は**晩成性**です。つまり、毛もなく、目も開いておらず、自力で体温を調節する能力がありません。彼らは巣の中の環境に完全に依存しており、逃げ場のない空間で温度が急上昇すると、容易に高体温症や重度の脱水症状に陥ります。</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h4 class="text-xl font-bold mb-3">生態学的罠（エコロジカル・トラップ）</h4>
+                    <p class="text-stone-700">授乳中の母リスは、自身の代謝と授乳活動で大量の熱を発します。巣箱の温度が危険なレベルに達すると、母リスは自らの命を守るため、巣を離れることを選択します。これは育児放棄ではなく、**「熱放散限界仮説」**に基づく生理的な限界反応です。安全なはずの巣箱が、人為的な要因で母子を引き離す罠と化してしまうのです。</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="solutions" class="mb-16">
+            <h3 class="text-2xl md:text-3xl font-bold text-center mb-6">解決策のツールキット：悲劇を防ぐための具体的行動</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                
+                <div class="solution-card bg-white p-6 rounded-lg shadow" data-solution="placement">
+                    <h4 class="text-xl font-bold mb-2">🌍 戦略的な設置</h4>
+                    <p>巣箱の場所が最も重要。日陰を選び、熱の影響を最小限に。</p>
+                </div>
+                <div id="solution-detail-placement" class="solution-detail md:col-span-2 lg:col-span-3 bg-stone-50 p-6 rounded-b-lg">
+                    <p><strong>日陰が最重要:</strong> 特に午後の最も暑い時間帯に最大限日陰になる場所に設置します。木の北側が最良の選択肢です。</p>
+                    <p><strong>最適な向き:</strong> 入り口は、直射日光や卓越風から離れた向き、通常は北か東向きに設置します。</p>
+                </div>
+
+                <div class="solution-card bg-white p-6 rounded-lg shadow" data-solution="design">
+                    <h4 class="text-xl font-bold mb-2">🎨 設計と改造</h4>
+                    <p>色や構造の工夫で、巣箱の熱性能を劇的に改善できます。</p>
+                </div>
+                <div id="solution-detail-design" class="solution-detail md:col-span-2 lg:col-span-3 bg-stone-50 p-6 rounded-b-lg">
+                    <p><strong>白色塗装の重要性:</strong> 巣箱の外壁を、無毒の白色塗料で塗装します。白色は太陽光の大部分を反射し、内部温度を大幅に下げます。研究によれば、白色の巣箱は未塗装の巣箱より4.4℃ (8°F) も涼しくなることが示されています。</p>
+                    <p><strong>換気構造の導入:</strong> 熱い空気は上昇するため、屋根のすぐ下の壁の高い位置に通気口を設けることが極めて効果的です。床には湿気を逃がす水抜き穴も必要です。</p>
+                </div>
+
+                <div class="solution-card bg-white p-6 rounded-lg shadow" data-solution="camera">
+                    <h4 class="text-xl font-bold mb-2">📹 カメラシステムの改善</h4>
+                    <p>内部の熱源そのものをなくす、または最小化する根本的な対策。</p>
+                </div>
+                <div id="solution-detail-camera" class="solution-detail md:col-span-2 lg:col-span-3 bg-stone-50 p-6 rounded-b-lg">
+                    <p><strong>熱負荷の抜本的削減:</strong> 複数のカメラの使用を中止し、消費電力が極めて低い単一のカメラシステムに置き換えます。</p>
+                    <p><strong>熱源の外部化:</strong> 暗視用の赤外線照明を巣箱の外部に設置し、窓から照らす方式を採用します。可能であればWi-Fiを使わない有線カメラに切り替え、熱と電磁波の両リスクを排除します。</p>
+                </div>
+
+            </div>
+        </section>
+
+        <section id="ethics" class="bg-white p-6 rounded-lg shadow-lg">
+            <h3 class="text-2xl md:text-3xl font-bold text-center mb-6">倫理的考察と結論：共存の未来へ</h3>
+            <p class="text-stone-700 mb-4">野生動物のライブストリーミングは、彼らへの愛情を育む計り知れない価値を持っています。しかし、その観察行為が対象の命を脅かしているという事実が、この分析によって明らかになりました。</p>
+            <p class="text-stone-700 mb-4">真の動物愛護とは、単に観察をやめることではありません。むしろ、**「どうすれば私たちは、愛する動物たちを観察しながら、彼らの命と福祉を最大限に守ることができるのか」**という問いを、真剣に考察し続けることです。</p>
+            <p class="text-stone-700 font-bold">本報告書で提言した改善策は、この課題を克服し、より高い倫理的基準を持つ観察の形へと進化するための具体的なステップです。この挑戦を乗り越えることで、このような観察は、「人類が他の種といかにして敬意を持って共存できるか」という未来への道筋を示す、先進的なモデルケースとなることができるでしょう。</p>
+        </section>
+
+    </main>
+
+    <footer class="text-center p-4 bg-stone-200 text-stone-600 mt-8">
+        <p>この報告書は、公開されている科学的知見に基づき作成されました。動物の福祉を最優先するための情報提供を目的としています。</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const ambientTempSlider = document.getElementById('ambient-temp');
+            const ambientTempValue = document.getElementById('ambient-temp-value');
+            const ambientTempValueF = document.getElementById('ambient-temp-value-f');
+            const solarGainToggle = document.getElementById('solar-gain-toggle');
+            const cameraPowerSlider = document.getElementById('camera-power');
+            const cameraPowerLabel = document.getElementById('camera-power-label');
+            const cameraWattageValue = document.getElementById('camera-wattage-value');
+            const internalTempDisplay = document.getElementById('internal-temp-display');
+            const tempWarning = document.getElementById('temp-warning');
+            const sunIcon = document.getElementById('sun-icon');
+
+            let solarGainActive = false;
+
+            const cameraScenarios = [
+                { label: 'カメラなし', wattage: 0, tempRise: 0 },
+                { label: '低電力 (x3)', wattage: 9, tempRise: 3.1 },
+                { label: '標準性能 (x3)', wattage: 18, tempRise: 6.3 },
+                { label: '高性能 (x3)', wattage: 27, tempRise: 9.4 }
+            ];
+
+            function CtoF(celsius) {
+                return (celsius * 9/5) + 32;
+            }
+
+            function updateSimulation() {
+                const ambientC = parseFloat(ambientTempSlider.value);
+                const ambientF = CtoF(ambientC);
+                
+                ambientTempValue.textContent = ambientC.toFixed(1);
+                ambientTempValueF.textContent = ambientF.toFixed(1);
+
+                const solarGainRise = solarGainActive ? 5.0 : 0.0;
+                
+                const cameraScenario = cameraScenarios[parseInt(cameraPowerSlider.value)];
+                const cameraRise = cameraScenario.tempRise;
+                
+                cameraPowerLabel.textContent = cameraScenario.label;
+                cameraWattageValue.textContent = cameraScenario.wattage;
+
+                const internalTempC = ambientC + solarGainRise + cameraRise;
+                const internalTempF = CtoF(internalTempC);
+
+                internalTempDisplay.textContent = `${internalTempC.toFixed(1)} °C / ${internalTempF.toFixed(1)} °F`;
+
+                internalTempDisplay.classList.remove('temp-safe', 'temp-caution', 'temp-danger', 'temp-lethal');
+                let warningText = '';
+
+                if (internalTempC >= 42) {
+                    internalTempDisplay.classList.add('temp-lethal');
+                    warningText = '致命的な温度域';
+                } else if (internalTempC >= 40) {
+                    internalTempDisplay.classList.add('temp-danger');
+                    warningText = '極めて危険な温度';
+                } else if (internalTempC >= 37) {
+                    internalTempDisplay.classList.add('temp-caution');
+                    warningText = '熱ストレス警告';
+                } else {
+                    internalTempDisplay.classList.add('temp-safe');
+                }
+                tempWarning.textContent = warningText;
+            }
+
+            ambientTempSlider.addEventListener('input', updateSimulation);
+            cameraPowerSlider.addEventListener('input', updateSimulation);
+
+            solarGainToggle.addEventListener('click', () => {
+                solarGainActive = !solarGainActive;
+                if (solarGainActive) {
+                    solarGainToggle.classList.add('bg-amber-500', 'text-white');
+                    solarGainToggle.textContent = '太陽光の影響あり';
+                    sunIcon.classList.remove('opacity-0');
+                } else {
+                    solarGainToggle.classList.remove('bg-amber-500', 'text-white');
+                    solarGainToggle.textContent = '太陽光を追加 (+5°C / +9°F)';
+                    sunIcon.classList.add('opacity-0');
+                }
+                updateSimulation();
+            });
+
+            const solutionCards = document.querySelectorAll('.solution-card');
+            solutionCards.forEach(card => {
+                card.addEventListener('click', () => {
+                    const solutionId = card.dataset.solution;
+                    const detailElement = document.getElementById(`solution-detail-${solutionId}`);
+                    
+                    const isOpening = !detailElement.classList.contains('open');
+
+                    document.querySelectorAll('.solution-detail.open').forEach(openDetail => {
+                        openDetail.classList.remove('open');
+                    });
+                    
+                    if (isOpening) {
+                        detailElement.classList.add('open');
+                    }
+                });
+            });
+
+            updateSimulation();
+        });
+    </script>
+</body>
+</html>
